@@ -1,3 +1,4 @@
+
 import fetch from "node-fetch";
 import { serialize } from "cookie";
 
@@ -8,12 +9,8 @@ const REDIRECT_URI = `${process.env.NEXT_PUBLIC_BASE_URL}/api/callback`;
 export default async function handler(req, res) {
     const { code } = req.query;
 
-    if (!code) {
-        return res.status(400).json({ error: "No code provided" });
-    }
-
     try {
-        // Exchange code for an access token
+        // Exchange code for access token
         const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -25,35 +22,28 @@ export default async function handler(req, res) {
                 redirect_uri: REDIRECT_URI,
             }),
         });
-
         const tokenData = await tokenResponse.json();
 
-        if (!tokenData.access_token) {
-            return res.status(400).json({ error: "Failed to exchange code for token" });
-        }
-
-        // Fetch user info from Discord
+        // Fetch user details from Discord API
         const userResponse = await fetch("https://discord.com/api/users/@me", {
             headers: { Authorization: `Bearer ${tokenData.access_token}` },
         });
-
         const userData = await userResponse.json();
 
-        // Set session cookie
+        // Save user data in a cookie
         res.setHeader(
             "Set-Cookie",
-            serialize("session", tokenData.access_token, {
+            serialize("session", JSON.stringify(userData), {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
-                maxAge: 60 * 60 * 24, // 1 day
+                sameSite: "strict",
                 path: "/",
             })
         );
 
-        // Redirect to home page or desired route
-        res.redirect("/");
+        res.redirect("/"); // Redirect back to the homepage or another route
     } catch (error) {
-        console.error("Error during Discord OAuth callback:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+        console.error("Error in OAuth2 callback:", error);
+        res.status(500).json({ error: "Authentication failed" });
     }
 }
