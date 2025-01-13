@@ -6,5 +6,33 @@ export default function handler(req, res) {
         REDIRECT_URI
     )}&response_type=code&scope=identify`;
 
-    res.redirect(discordAuthUrl);
+    // Serve a script that performs a redirect and sends the token back via postMessage
+    res.send(`
+        <html>
+        <head>
+            <title>Login with Discord</title>
+            <script>
+                // Open the Discord authentication window
+                window.location.href = '${discordAuthUrl}';
+
+                // After the user authenticates, capture the token and send it to the parent window
+                window.addEventListener('load', function () {
+                    const params = new URLSearchParams(window.location.search);
+                    const token = params.get('token'); // Assuming token is returned in query
+
+                    if (token && window.opener) {
+                        window.opener.postMessage({
+                            type: 'discord-auth',
+                            token: token
+                        }, '*');
+                        window.close(); // Close the login window
+                    }
+                });
+            </script>
+        </head>
+        <body>
+            <p>Redirecting to Discord for authentication...</p>
+        </body>
+        </html>
+    `);
 }
