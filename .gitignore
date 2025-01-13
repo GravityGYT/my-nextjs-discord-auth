@@ -1,0 +1,11 @@
+# Environment Variables
+.env.local
+
+# Node Modules
+node_modules/
+
+# Logs
+*.log
+
+# Build Output
+.next/
